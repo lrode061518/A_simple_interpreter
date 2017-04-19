@@ -1,4 +1,12 @@
+'''
+grammer as below:
+expr   :  term  (( ADD | SUB ) term )*
+term   :  factor(( MUL | DIV ) factor )*
+factor :  Integer | LPA  expr  RPA
+'''
+
 EOF, ADD, SUB, MUL, DIV = ( 'EOF', 'ADD', 'SUB', 'MUL', 'DIV' )
+LPA, RPA = ( 'LPA', 'RPA' )
 INTEGER = 'INTEGER'
 
 class Token:
@@ -45,6 +53,12 @@ class Scanner:
         if self.currChar == '/':
             self.forward()
             return Token(DIV, '/')
+        if self.currChar == '(':
+            self.forward()
+            return Token(LPA, '(')
+        if self.currChar == ')':
+            self.forward()
+            return Token(RPA, ')')
 
         integer = ''
         while self.currChar and self.currChar.isdigit():
@@ -72,10 +86,16 @@ class Parser:
 
     def getInt(self):
         val = self.currT.value
-        self.validSyntax(INTEGER)
+        if self.currT.type == INTEGER:
+            self.validSyntax(INTEGER)
+            val = int( val )
+            val = self.getOp( val, MUL, DIV )
+        elif self.currT.type == LPA:
 
-        val = int( val )
-        val = self.getOp( val, MUL, DIV )
+            self.validSyntax(LPA)
+            val = self.parse()
+            self.validSyntax(RPA)
+            val = self.getOp( val, MUL, DIV )
 
         return int(val)
 
@@ -97,6 +117,11 @@ class Parser:
 
         return val
 
+    def parse(self):
+        ret = self.getInt()
+        ret = self.getOp( ret, ADD, SUB )
+        return ret
+
 
 class Interpreter(Parser):
     def __init__(self, text):
@@ -104,11 +129,7 @@ class Interpreter(Parser):
         self.parser = Parser(self.scannr)
 
     def go(self):
-
-        ret = self.parser.getInt()
-        ret = self.parser.getOp( ret, ADD, SUB )
-
-        return ret
+        return self.parser.parse()
 
 def main():
     while True:
